@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
@@ -26,13 +26,9 @@ class SentimentResponse(BaseModel):
     results: List[SentimentResult]
 
 def analyze_sentiment(text: str) -> str:
-    """
-    Analyze sentiment using comprehensive rule-based approach
-    Returns: "happy", "sad", or "neutral"
-    """
     text_lower = text.lower().strip()
     
-    # Comprehensive happy sentiment indicators
+    # Expanded happy sentiment indicators
     happy_words = {
         'love', 'like', 'great', 'awesome', 'amazing', 'wonderful', 'fantastic',
         'excellent', 'good', 'nice', 'happy', 'joy', 'pleased', 'delighted',
@@ -47,13 +43,10 @@ def analyze_sentiment(text: str) -> str:
         'motivating', 'empowering', 'uplifting', 'refreshing', 'rejuvenating',
         'revitalizing', 'energizing', 'invigorating', 'stimulating', 'exciting',
         'adventurous', 'fun', 'entertaining', 'interesting', 'fascinating',
-        'captivating', 'engaging', 'absorbing', 'immersive', 'compelling',
-        'success', 'achievement', 'victory', 'win', 'triumph', 'accomplishment',
-        'progress', 'improvement', 'breakthrough', 'milestone', 'celebration',
-        'congratulations', 'proud', 'honored', 'appreciated', 'valued', 'respected'
+        'captivating', 'engaging', 'absorbing', 'immersive', 'compelling'
     }
     
-    # Comprehensive sad sentiment indicators
+    # Expanded sad sentiment indicators
     sad_words = {
         'hate', 'terrible', 'awful', 'horrible', 'bad', 'sad', 'angry', 'mad',
         'upset', 'disappointed', 'frustrated', 'annoyed', 'depressed', 'miserable',
@@ -72,9 +65,7 @@ def analyze_sentiment(text: str) -> str:
         'worthless', 'useless', 'pointless', 'meaningless', 'hopeless', 'helpless',
         'powerless', 'weak', 'tired', 'exhausted', 'fatigued', 'weary', 'drained',
         'burned', 'stressed', 'anxious', 'worried', 'nervous', 'fearful', 'scared',
-        'afraid', 'terrified', 'panicked', 'alarmed', 'shocked', 'stunned',
-        'failure', 'mistake', 'error', 'problem', 'issue', 'difficulty', 'challenge',
-        'struggle', 'battle', 'fight', 'conflict', 'argument', 'dispute', 'quarrel'
+        'afraid', 'terrified', 'panicked', 'alarmed', 'shocked', 'stunned'
     }
     
     # Intensifiers that amplify sentiment
@@ -82,12 +73,11 @@ def analyze_sentiment(text: str) -> str:
         'very', 'really', 'extremely', 'absolutely', 'completely', 'totally',
         'utterly', 'entirely', 'fully', 'thoroughly', 'highly', 'exceptionally',
         'incredibly', 'unbelievably', 'remarkably', 'particularly', 'especially',
-        'extraordinarily', 'immensely', 'intensely', 'profoundly', 'deeply',
-        'so', 'too', 'extremely', 'really', 'very'
+        'extraordinarily', 'immensely', 'intensely', 'profoundly', 'deeply'
     }
     
     # Negations that reverse sentiment
-    negations = {'not', "n't", 'no', 'never', 'nothing', 'nobody', 'nowhere', 'none'}
+    negations = {'not', "n't", 'no', 'never', 'nothing', 'nobody', 'nowhere'}
     
     happy_count = 0
     sad_count = 0
@@ -103,28 +93,24 @@ def analyze_sentiment(text: str) -> str:
         # Check for intensifiers
         if word in intensifiers and i + 1 < len(words):
             next_word = words[i + 1]
-            if next_word in happy_words:
-                happy_count += 3  # Strong weight for intensified happy
-                i += 2
-                continue
-            elif next_word in sad_words:
-                sad_count += 3  # Strong weight for intensified sad
-                i += 2
-                continue
+            if next_word in happy_words or next_word in sad_words:
+                weight = 2  # Double weight for intensified words
+                i += 1  # Skip the intensifier
+                word = next_word
         
         # Check for negations
-        if word in negations and i + 1 < len(words):
+        elif word in negations and i + 1 < len(words):
             next_word = words[i + 1]
             if next_word in happy_words:
-                sad_count += 2  # Negated happy becomes sad
+                sad_count += 2  # Negated happy becomes strongly sad
                 i += 2
                 continue
             elif next_word in sad_words:
-                happy_count += 2  # Negated sad becomes happy
+                happy_count += 2  # Negated sad becomes strongly happy
                 i += 2
                 continue
         
-        # Count sentiment words
+        # Count sentiment words with weights
         if word in happy_words:
             happy_count += weight
         elif word in sad_words:
@@ -132,7 +118,7 @@ def analyze_sentiment(text: str) -> str:
             
         i += 1
     
-    # Check for emotional punctuation and patterns
+    # Check for emotional punctuation
     if '!' in text:
         # Exclamation often indicates strong emotion
         if happy_count > 0:
@@ -140,17 +126,19 @@ def analyze_sentiment(text: str) -> str:
         elif sad_count > 0:
             sad_count += 1
     
-    # Check for common emotional phrases
+    if '?' in text and ('why' in text_lower or 'how' in text_lower):
+        # Questions like "why is this happening?" often indicate sadness
+        sad_count += 1
+    
+    # Check for common phrases with strong sentiment
     strong_happy_phrases = [
         'i love', 'i like', 'so happy', 'very happy', 'really happy',
-        'so glad', 'very glad', 'really glad', 'so excited', 'very excited',
-        'feel great', 'feel amazing', 'so good', 'very good', 'really good'
+        'so glad', 'very glad', 'really glad', 'so excited', 'very excited'
     ]
     
     strong_sad_phrases = [
         'i hate', 'i dislike', 'so sad', 'very sad', 'really sad',
-        'so angry', 'very angry', 'really angry', 'so disappointed',
-        'feel terrible', 'feel awful', 'so bad', 'very bad', 'really bad'
+        'so angry', 'very angry', 'really angry', 'so disappointed'
     ]
     
     for phrase in strong_happy_phrases:
@@ -161,19 +149,22 @@ def analyze_sentiment(text: str) -> str:
         if phrase in text_lower:
             sad_count += 2
     
-    # Determine final sentiment
-    if happy_count > sad_count:
+    # Determine final sentiment with adjusted thresholds
+    if happy_count > 0 and happy_count > sad_count:
         return "happy"
-    elif sad_count > happy_count:
+    elif sad_count > 0 and sad_count > happy_count:
         return "sad"
     else:
-        return "neutral"
+        # If both are equal or both zero, check for any sentiment indicators
+        if happy_count > 0:
+            return "happy"
+        elif sad_count > 0:
+            return "sad"
+        else:
+            return "neutral"
 
 @app.post("/sentiment", response_model=SentimentResponse)
 async def analyze_batch_sentiment(request: SentimentRequest):
-    """
-    Analyze sentiment for multiple sentences in batch
-    """
     results = []
     
     for sentence in request.sentences:
@@ -189,14 +180,9 @@ async def analyze_batch_sentiment(request: SentimentRequest):
 async def root():
     return {"message": "Sentiment Analysis API is running", "endpoint": "POST /sentiment for sentiment analysis"}
 
-# Add POST handler for root endpoint to handle testing system requests
 @app.post("/")
 async def root_post(request: SentimentRequest = None):
-    """
-    Handle POST requests to root endpoint - redirect to sentiment analysis
-    """
     if request and request.sentences:
-        # If sentences are provided in POST to root, process them
         return await analyze_batch_sentiment(request)
     else:
         return {
@@ -207,15 +193,6 @@ async def root_post(request: SentimentRequest = None):
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "endpoint": "/sentiment"}
-
-# Add OPTIONS handler for all endpoints
-@app.options("/")
-async def options_root():
-    return {"message": "OK"}
-
-@app.options("/sentiment")
-async def options_sentiment():
-    return {"message": "OK"}
 
 if __name__ == "__main__":
     import uvicorn
