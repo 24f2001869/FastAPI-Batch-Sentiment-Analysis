@@ -43,7 +43,11 @@ def analyze_sentiment(text: str) -> str:
         'motivating', 'empowering', 'uplifting', 'refreshing', 'rejuvenating',
         'revitalizing', 'energizing', 'invigorating', 'stimulating', 'exciting',
         'adventurous', 'fun', 'entertaining', 'interesting', 'fascinating',
-        'captivating', 'engaging', 'absorbing', 'immersive', 'compelling'
+        'captivating', 'engaging', 'absorbing', 'immersive', 'compelling',
+        'yay', 'woohoo', 'hooray', 'cool', 'sweet', 'fantastic', 'marvelous',
+        'splendid', 'terrific', 'smiling', 'laughing', 'win', 'won', 'success',
+        'achievement', 'accomplishment', 'victory', 'triumph', 'celebration',
+        'congratulations', 'proud', 'impressed', 'admire', 'appreciate'
     }
     
     # Expanded sad sentiment indicators
@@ -65,7 +69,10 @@ def analyze_sentiment(text: str) -> str:
         'worthless', 'useless', 'pointless', 'meaningless', 'hopeless', 'helpless',
         'powerless', 'weak', 'tired', 'exhausted', 'fatigued', 'weary', 'drained',
         'burned', 'stressed', 'anxious', 'worried', 'nervous', 'fearful', 'scared',
-        'afraid', 'terrified', 'panicked', 'alarmed', 'shocked', 'stunned'
+        'afraid', 'terrified', 'panicked', 'alarmed', 'shocked', 'stunned',
+        'crying', 'tears', 'sobbing', 'weeping', 'grieving', 'mourning', 'loss',
+        'failure', 'failed', 'mistake', 'error', 'wrong', 'broken', 'damaged',
+        'ruined', 'destroyed', 'wasted', 'missed', 'lost'
     }
     
     # Intensifiers that amplify sentiment
@@ -73,11 +80,12 @@ def analyze_sentiment(text: str) -> str:
         'very', 'really', 'extremely', 'absolutely', 'completely', 'totally',
         'utterly', 'entirely', 'fully', 'thoroughly', 'highly', 'exceptionally',
         'incredibly', 'unbelievably', 'remarkably', 'particularly', 'especially',
-        'extraordinarily', 'immensely', 'intensely', 'profoundly', 'deeply'
+        'extraordinarily', 'immensely', 'intensely', 'profoundly', 'deeply',
+        'so', 'too', 'super', 'extra', 'most', 'more', 'quite', 'pretty'
     }
     
     # Negations that reverse sentiment
-    negations = {'not', "n't", 'no', 'never', 'nothing', 'nobody', 'nowhere'}
+    negations = {'not', "n't", 'no', 'never', 'nothing', 'nobody', 'nowhere', 'none'}
     
     happy_count = 0
     sad_count = 0
@@ -93,10 +101,14 @@ def analyze_sentiment(text: str) -> str:
         # Check for intensifiers
         if word in intensifiers and i + 1 < len(words):
             next_word = words[i + 1]
-            if next_word in happy_words or next_word in sad_words:
-                weight = 2  # Double weight for intensified words
-                i += 1  # Skip the intensifier
-                word = next_word
+            if next_word in happy_words:
+                happy_count += 3  # Strong boost for intensified happy words
+                i += 2
+                continue
+            elif next_word in sad_words:
+                sad_count += 3  # Strong boost for intensified sad words
+                i += 2
+                continue
         
         # Check for negations
         elif word in negations and i + 1 < len(words):
@@ -118,44 +130,77 @@ def analyze_sentiment(text: str) -> str:
             
         i += 1
     
-    # Check for emotional punctuation
+    # Check for emotional punctuation and capitalization
     if '!' in text:
-        # Exclamation often indicates strong emotion
+        # Multiple exclamations indicate stronger emotion
+        exclamation_count = text.count('!')
         if happy_count > 0:
-            happy_count += 1
+            happy_count += exclamation_count
         elif sad_count > 0:
-            sad_count += 1
+            sad_count += exclamation_count
+        elif any(word in text_lower for word in ['yay', 'woohoo', 'hooray']):
+            happy_count += 2
     
-    if '?' in text and ('why' in text_lower or 'how' in text_lower):
-        # Questions like "why is this happening?" often indicate sadness
-        sad_count += 1
+    # Check for ALL CAPS (often indicates strong emotion)
+    if text.isupper():
+        if happy_count > 0:
+            happy_count += 2
+        elif sad_count > 0:
+            sad_count += 2
     
     # Check for common phrases with strong sentiment
     strong_happy_phrases = [
         'i love', 'i like', 'so happy', 'very happy', 'really happy',
-        'so glad', 'very glad', 'really glad', 'so excited', 'very excited'
+        'so glad', 'very glad', 'really glad', 'so excited', 'very excited',
+        'really excited', 'makes me happy', 'feel happy', 'so good', 'very good',
+        'really good', 'so great', 'very great', 'really great', 'so wonderful',
+        'very wonderful', 'really wonderful', 'so amazing', 'very amazing',
+        'so fantastic', 'very fantastic', 'so excellent', 'very excellent',
+        'so perfect', 'very perfect', 'so beautiful', 'very beautiful',
+        'so nice', 'very nice', 'so cool', 'very cool', 'so sweet', 'very sweet',
+        'thank you', 'thanks', 'grateful for', 'appreciate it', 'love it',
+        'enjoy it', 'had fun', 'was fun', 'so much fun', 'great time',
+        'good time', 'awesome time', 'amazing time', 'wonderful time'
     ]
     
     strong_sad_phrases = [
         'i hate', 'i dislike', 'so sad', 'very sad', 'really sad',
-        'so angry', 'very angry', 'really angry', 'so disappointed'
+        'so angry', 'very angry', 'really angry', 'so disappointed',
+        'very disappointed', 'really disappointed', 'so upset', 'very upset',
+        'really upset', 'so frustrated', 'very frustrated', 'really frustrated',
+        'so annoyed', 'very annoyed', 'really annoyed', 'so terrible',
+        'very terrible', 'really terrible', 'so awful', 'very awful',
+        'really awful', 'so horrible', 'very horrible', 'really horrible',
+        'so bad', 'very bad', 'really bad', 'makes me sad', 'feel sad',
+        'feel angry', 'feel upset', 'feel frustrated', 'feel annoyed',
+        'hate it', 'dislike it', 'not happy', 'unhappy with', 'not good',
+        'not great', 'not nice', 'bad time', 'terrible time', 'awful time',
+        'horrible time', 'worst time', 'regret it', 'sorry about'
     ]
     
     for phrase in strong_happy_phrases:
         if phrase in text_lower:
-            happy_count += 2
+            happy_count += 3
     
     for phrase in strong_sad_phrases:
         if phrase in text_lower:
-            sad_count += 2
+            sad_count += 3
+    
+    # Check for positive emoji-like patterns
+    if any(emoji in text for emoji in [':)', ':-)', '=)', ';)', ':-D', ':D', '<3', '❤️']):
+        happy_count += 2
+    
+    # Check for negative emoji-like patterns  
+    if any(emoji in text for emoji in [':(', ':-(', '=(', ':/', ':-/', ':\\']):
+        sad_count += 2
     
     # Determine final sentiment with adjusted thresholds
-    if happy_count > 0 and happy_count > sad_count:
+    if happy_count > sad_count:
         return "happy"
-    elif sad_count > 0 and sad_count > happy_count:
+    elif sad_count > happy_count:
         return "sad"
     else:
-        # If both are equal or both zero, check for any sentiment indicators
+        # If both are equal, check for any sentiment indicators
         if happy_count > 0:
             return "happy"
         elif sad_count > 0:
