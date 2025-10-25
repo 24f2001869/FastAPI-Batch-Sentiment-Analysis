@@ -187,11 +187,35 @@ async def analyze_batch_sentiment(request: SentimentRequest):
 
 @app.get("/")
 async def root():
-    return {"message": "Sentiment Analysis API is running"}
+    return {"message": "Sentiment Analysis API is running", "endpoint": "POST /sentiment for sentiment analysis"}
+
+# Add POST handler for root endpoint to handle testing system requests
+@app.post("/")
+async def root_post(request: SentimentRequest = None):
+    """
+    Handle POST requests to root endpoint - redirect to sentiment analysis
+    """
+    if request and request.sentences:
+        # If sentences are provided in POST to root, process them
+        return await analyze_batch_sentiment(request)
+    else:
+        return {
+            "message": "Sentiment Analysis API is running", 
+            "instruction": "Send POST requests to /sentiment endpoint with JSON: {'sentences': ['sentence1', 'sentence2', ...]}"
+        }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "endpoint": "/sentiment"}
+
+# Add OPTIONS handler for all endpoints
+@app.options("/")
+async def options_root():
+    return {"message": "OK"}
+
+@app.options("/sentiment")
+async def options_sentiment():
+    return {"message": "OK"}
 
 if __name__ == "__main__":
     import uvicorn
